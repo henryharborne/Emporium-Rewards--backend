@@ -6,6 +6,28 @@ const { lookupCustomer } = require('../controllers/customerController');
 
 router.post('/lookup', lookupCustomer);
 
+// GET /api/customers/search?q=... — Search by name, phone, or email
+router.get('/search', verifyToken, async (req, res) => {
+    const { q } = req.query;
+  
+    if (!q || typeof q !== 'string') {
+      return res.status(400).json({ error: 'Query parameter q is required.' });
+    }
+  
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .or(`name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`);
+  
+    if (error) {
+      console.error('Search error:', error);
+      return res.status(500).json({ error: 'Failed to search customers.' });
+    }
+  
+    res.json(data);
+});  
+
+
 // GET /api/customers/:id — Protected route
 router.get('/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
@@ -154,5 +176,5 @@ router.delete('/:id', verifyToken, async (req, res) => {
     res.json({ success: true, message: 'Customer deleted.' });
   });
     
-  
+
 module.exports = router;
