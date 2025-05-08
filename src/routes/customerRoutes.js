@@ -100,5 +100,41 @@ router.put('/:id', verifyToken, async (req, res) => {
     res.json(data);
   });
   
+// PATCH /api/customers/:id/points — Add/subtract points
+router.patch('/:id/points', verifyToken, async (req, res) => {
+    const { id } = req.params;
+    const { amount } = req.body;
+  
+    if (typeof amount !== 'number') {
+      return res.status(400).json({ error: 'Amount must be a number.' });
+    }
+  
+    // Get current points
+    const { data: customer, error: fetchError } = await supabase
+      .from('customers')
+      .select('points')
+      .eq('id', id)
+      .single();
+  
+    if (fetchError || !customer) {
+      return res.status(404).json({ error: 'Customer not found.' });
+    }
+  
+    const newPoints = customer.points + amount;
+  
+    // Update points
+    const { data: updated, error: updateError } = await supabase
+      .from('customers')
+      .update({ points: newPoints })
+      .eq('id', id)
+      .select()
+      .single();
+  
+    if (updateError) {
+      return res.status(500).json({ error: 'Failed to update points.' });
+    }
+  
+    res.json(updated);
+  });
 
 module.exports = router;
