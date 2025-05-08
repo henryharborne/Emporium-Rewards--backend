@@ -68,4 +68,37 @@ router.post('/', verifyToken, async (req, res) => {
   res.status(201).json(newCustomer);
 });
 
+// PUT /api/customers/:id — Edit customer info
+router.put('/:id', verifyToken, async (req, res) => {
+    const { id } = req.params;
+    const { name, phone, email, notes } = req.body;
+  
+    // Nothing to update
+    if (!name && !phone && !email && !notes) {
+      return res.status(400).json({ error: 'No fields provided to update.' });
+    }
+  
+    // Build update object dynamically
+    const updates = {};
+    if (name) updates.name = name;
+    if (phone) updates.phone = phone;
+    if (email) updates.email = email;
+    if (notes) updates.notes = notes;
+  
+    const { data, error } = await supabase
+      .from('customers')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+  
+    if (error || !data) {
+        console.error('Update error:', error);
+      return res.status(500).json({ error: 'Failed to update customer.' });
+    }
+  
+    res.json(data);
+  });
+  
+
 module.exports = router;
