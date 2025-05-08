@@ -54,4 +54,18 @@ router.get('/is-admin', verifyToken, (req, res) => {
   });
 });
 
+router.get('/logs', verifyToken, async (req, res) => {
+  console.log('HIT /api/admin/logs route');
+  const { data, error } = await supabase
+    .from('admin_logs')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Log fetch error:', error);
+    return res.status(500).json({ error: 'Failed to fetch logs.' });
+  }
+
+  res.json(data);
+});
 module.exports = router;

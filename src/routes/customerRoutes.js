@@ -3,32 +3,33 @@ const router = express.Router();
 const verifyToken = require('../middleware/verifyToken');
 const supabase = require('../database/supabaseClient');
 const { lookupCustomer } = require('../controllers/customerController');
+const logAdminAction = require('../utils/logAdminAction');
 
+// Customer lookup (public/internal)
 router.post('/lookup', lookupCustomer);
 
-// GET /api/customers/search?q=... — Search by name, phone, or email
+// GET /api/customers/search?q=...
 router.get('/search', verifyToken, async (req, res) => {
-    const { q } = req.query;
-  
-    if (!q || typeof q !== 'string') {
-      return res.status(400).json({ error: 'Query parameter q is required.' });
-    }
-  
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .or(`name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`);
-  
-    if (error) {
-      console.error('Search error:', error);
-      return res.status(500).json({ error: 'Failed to search customers.' });
-    }
-  
-    res.json(data);
-});  
+  const { q } = req.query;
 
+  if (!q || typeof q !== 'string') {
+    return res.status(400).json({ error: 'Query parameter q is required.' });
+  }
 
-// GET /api/customers/:id — Protected route
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .or(`name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`);
+
+  if (error) {
+    console.error('Search error:', error);
+    return res.status(500).json({ error: 'Failed to search customers.' });
+  }
+
+  res.json(data);
+});
+
+// GET /api/customers/:id
 router.get('/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
 
@@ -45,7 +46,7 @@ router.get('/:id', verifyToken, async (req, res) => {
   res.json(customer);
 });
 
-// POST /api/customers — Add new customer
+// POST /api/customers
 router.post('/', verifyToken, async (req, res) => {
   const { name, phone, email, notes, points } = req.body;
 
@@ -69,16 +70,14 @@ router.post('/', verifyToken, async (req, res) => {
 
   const { data: newCustomer, error: insertError } = await supabase
     .from('customers')
-    .insert([
-      {
-        name,
-        phone,
-        email,
-        notes: notes || '',
-        points: typeof points === 'number' ? points : 0,
-        cashable: false
-      }
-    ])
+    .insert([{
+      name,
+      phone,
+      email,
+      notes: notes || '',
+      points: typeof points === 'number' ? points : 0,
+      cashable: false
+    }])
     .select()
     .single();
 
@@ -87,94 +86,117 @@ router.post('/', verifyToken, async (req, res) => {
     return res.status(500).json({ error: 'Failed to create customer.' });
   }
 
+  await logAdminAction({
+    admin_email: req.user.email,
+    action_type: 'create_customer',
+    customer_id: newCustomer.id,
+    details: `Created customer: ${newCustomer.name}`
+  });
+
   res.status(201).json(newCustomer);
 });
 
-// PUT /api/customers/:id — Edit customer info
+// PUT /api/customers/:id
 router.put('/:id', verifyToken, async (req, res) => {
-    const { id } = req.params;
-    const { name, phone, email, notes } = req.body;
-  
-    // Nothing to update
-    if (!name && !phone && !email && !notes) {
-      return res.status(400).json({ error: 'No fields provided to update.' });
-    }
-  
-    // Build update object dynamically
-    const updates = {};
-    if (name) updates.name = name;
-    if (phone) updates.phone = phone;
-    if (email) updates.email = email;
-    if (notes) updates.notes = notes;
-  
-    const { data, error } = await supabase
-      .from('customers')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-  
-    if (error || !data) {
-        console.error('Update error:', error);
-      return res.status(500).json({ error: 'Failed to update customer.' });
-    }
-  
-    res.json(data);
-  });
-  
-// PATCH /api/customers/:id/points — Add/subtract points
-router.patch('/:id/points', verifyToken, async (req, res) => {
-    const { id } = req.params;
-    const { amount } = req.body;
-  
-    if (typeof amount !== 'number') {
-      return res.status(400).json({ error: 'Amount must be a number.' });
-    }
-  
-    // Get current points
-    const { data: customer, error: fetchError } = await supabase
-      .from('customers')
-      .select('points')
-      .eq('id', id)
-      .single();
-  
-    if (fetchError || !customer) {
-      return res.status(404).json({ error: 'Customer not found.' });
-    }
-  
-    const newPoints = customer.points + amount;
-  
-    // Update points
-    const { data: updated, error: updateError } = await supabase
-      .from('customers')
-      .update({ points: newPoints })
-      .eq('id', id)
-      .select()
-      .single();
-  
-    if (updateError) {
-      return res.status(500).json({ error: 'Failed to update points.' });
-    }
-  
-    res.json(updated);
+  const { id } = req.params;
+  const { name, phone, email, notes } = req.body;
+
+  if (!name && !phone && !email && !notes) {
+    return res.status(400).json({ error: 'No fields provided to update.' });
+  }
+
+  const updates = {};
+  if (name) updates.name = name;
+  if (phone) updates.phone = phone;
+  if (email) updates.email = email;
+  if (notes) updates.notes = notes;
+
+  const { data, error } = await supabase
+    .from('customers')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error('Update error:', error);
+    return res.status(500).json({ error: 'Failed to update customer.' });
+  }
+
+  await logAdminAction({
+    admin_email: req.user.email,
+    action_type: 'edit_customer',
+    customer_id: id,
+    details: `Edited fields: ${Object.keys(updates).join(', ')}`
   });
 
-// DELETE /api/customers/:id — Delete customer
-router.delete('/:id', verifyToken, async (req, res) => {
-    const { id } = req.params;
-  
-    const { error } = await supabase
-      .from('customers')
-      .delete()
-      .eq('id', id);
-  
-    if (error) {
-      console.error('Delete error:', error);
-      return res.status(500).json({ error: 'Failed to delete customer.' });
-    }
-  
-    res.json({ success: true, message: 'Customer deleted.' });
+  res.json(data);
+});
+
+// PATCH /api/customers/:id/points
+router.patch('/:id/points', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { amount } = req.body;
+
+  if (typeof amount !== 'number') {
+    return res.status(400).json({ error: 'Amount must be a number.' });
+  }
+
+  const { data: customer, error: fetchError } = await supabase
+    .from('customers')
+    .select('points')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !customer) {
+    return res.status(404).json({ error: 'Customer not found.' });
+  }
+
+  const newPoints = customer.points + amount;
+
+  const { data: updated, error: updateError } = await supabase
+    .from('customers')
+    .update({ points: newPoints })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (updateError) {
+    return res.status(500).json({ error: 'Failed to update points.' });
+  }
+
+  await logAdminAction({
+    admin_email: req.user.email,
+    action_type: 'modify_points',
+    customer_id: id,
+    details: `Adjusted points by ${amount} (new total: ${newPoints})`
   });
-    
+
+  res.json(updated);
+});
+
+// DELETE /api/customers/:id
+router.delete('/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+
+  const { error } = await supabase
+    .from('customers')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Delete error:', error);
+    return res.status(500).json({ error: 'Failed to delete customer.' });
+  }
+
+  await logAdminAction({
+    admin_email: req.user.email,
+    action_type: 'delete_customer',
+    customer_id: id,
+    details: `Deleted customer ID: ${id}`
+  });
+
+  res.json({ success: true, message: 'Customer deleted.' });
+});
 
 module.exports = router;
