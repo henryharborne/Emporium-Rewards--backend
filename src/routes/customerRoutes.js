@@ -137,4 +137,22 @@ router.patch('/:id/points', verifyToken, async (req, res) => {
     res.json(updated);
   });
 
+// DELETE /api/customers/:id — Delete customer
+router.delete('/:id', verifyToken, async (req, res) => {
+    const { id } = req.params;
+  
+    const { error } = await supabase
+      .from('customers')
+      .delete()
+      .eq('id', id);
+  
+    if (error) {
+      console.error('Delete error:', error);
+      return res.status(500).json({ error: 'Failed to delete customer.' });
+    }
+  
+    res.json({ success: true, message: 'Customer deleted.' });
+  });
+    
+  
 module.exports = router;
