@@ -54,6 +54,7 @@ router.get('/is-admin', verifyToken, (req, res) => {
   });
 });
 
+// GET /api/admin/logs
 router.get('/logs', verifyToken, async (req, res) => {
   console.log('HIT /api/admin/logs route');
   const { data, error } = await supabase

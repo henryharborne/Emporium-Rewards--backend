@@ -4,6 +4,7 @@ const verifyToken = require('../middleware/verifyToken');
 const supabase = require('../database/supabaseClient');
 const { lookupCustomer } = require('../controllers/customerController');
 const logAdminAction = require('../utils/logAdminAction');
+const { Parser} = require('json2csv');
 
 // Customer lookup (public/internal)
 router.post('/lookup', lookupCustomer);
@@ -27,6 +28,25 @@ router.get('/search', verifyToken, async (req, res) => {
   }
 
   res.json(data);
+});
+
+// GET /api/customers/export
+router.get('/export-customers', verifyToken, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('customers').select('*');
+    if (error) throw error;
+
+    const fields = ['id', 'name', 'email', 'phone', 'points', 'notes'];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(data);
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('customers.csv');
+    res.send(csv);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error exporting customer data');
+  }
 });
 
 // GET /api/customers/:id
