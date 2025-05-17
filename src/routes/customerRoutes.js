@@ -68,9 +68,15 @@ router.get('/:id', verifyToken, async (req, res) => {
 
 // POST /api/customers
 router.post('/', verifyToken, async (req, res) => {
-  const { name, phone, email, notes, points } = req.body;
+  const {
+    name = '',
+    phone, 
+    email = '',
+    notes = '',
+    points = 0 
+  } = req.body;
 
-  if (!name || !phone || !email) {
+  if (!phone) {
     return res.status(400).json({ error: 'Name, phone, and email are required.' });
   }
 
