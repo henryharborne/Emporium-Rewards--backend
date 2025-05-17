@@ -69,4 +69,66 @@ router.get('/logs', verifyToken, async (req, res) => {
 
   res.json(data);
 });
+
+// POST /api/admin/logs/:logID/undo
+router.post('/logs/:logId/undo', verifyToken, async (req, res) => {
+  const { logId } = req.params;
+
+  const { data: log, error: logError } = await supabase
+    .from('admin_logs')
+    .select('*')
+    .eq('id', logId)
+    .single();
+
+  if (logError || !log) {
+    return res.status(404).json({ error: 'Log not found' });
+  }
+
+  const { action_type, customer_id, details } = log;
+
+  if (action_type !== 'modify_points') {
+    return res.status(400).json({ error: 'Undo not supported for this action.' });
+  }
+
+  const match = details.match(/Adjusted points by (-?\d+)/);
+  if (!match) {
+    return res.status(400).json({ error: 'Invalid log details format.' });
+  }
+
+  const originalAmount = parseInt(match[1]);
+  const undoAmount = -originalAmount;
+
+  const { data: customer, error: fetchError } = await supabase
+    .from('customers')
+    .select('points')
+    .eq('id', customer_id)
+    .single();
+
+  if (fetchError || !customer) {
+    return res.status(404).json({ error: 'Customer not found.' });
+  }
+
+  const newPoints = customer.points + undoAmount;
+
+  const { error: updateError } = await supabase
+    .from('customers')
+    .update({ points: newPoints })
+    .eq('id', customer_id);
+
+  if (updateError) {
+    return res.status(500).json({ error: 'Failed to undo points adjustment.' });
+  }
+
+  await supabase.from('admin_logs').insert({
+    admin_email: req.user.email,
+    action_type: 'undo_modify_points',
+    customer_id,
+    customer_name: log.customer_name,
+    customer_phone: log.customer_phone,
+    details: `Undo of points adjustment: reversed ${originalAmount}`,
+  });
+
+  res.json({ success: true, message: `Reversed point change of ${originalAmount}` });
+});
+
 module.exports = router;
