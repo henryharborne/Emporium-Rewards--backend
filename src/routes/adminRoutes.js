@@ -21,6 +21,11 @@ function verifyToken(req, res, next) {
   }
 }
 
+// Cold-start prevention ping route
+router.get('/ping', (req, res) => {
+  res.send('pong');
+});
+
 // POST /api/admin/login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -50,7 +55,7 @@ router.get('/is-admin', verifyToken, (req, res) => {
   res.json({
     isAdmin: true,
     email: req.user.email,
-    username: req.user.username
+    username: req.user.username,
   });
 });
 
@@ -70,7 +75,7 @@ router.get('/logs', verifyToken, async (req, res) => {
   res.json(data);
 });
 
-// POST /api/admin/logs/:logID/undo
+// POST /api/admin/logs/:logId/undo
 router.post('/logs/:logId/undo', verifyToken, async (req, res) => {
   const { logId } = req.params;
 
