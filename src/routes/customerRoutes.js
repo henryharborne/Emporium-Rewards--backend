@@ -33,7 +33,11 @@ router.get('/search', verifyToken, async (req, res) => {
 // GET /api/customers/export
 router.get('/export-customers', verifyToken, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('customers').select('*');
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .range(0, 1999);
+
     if (error) throw error;
 
     const fields = ['id', 'name', 'email', 'phone', 'points', 'notes'];
