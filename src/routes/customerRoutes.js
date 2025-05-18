@@ -136,10 +136,11 @@ router.put('/:id', verifyToken, async (req, res) => {
   }
 
   const updates = {};
-  if (name) updates.name = name;
-  if (phone) updates.phone = phone;
-  if (email) updates.email = email;
-  if (notes) updates.notes = notes;
+    if (name !== undefined) updates.name = name;
+    if (phone !== undefined) updates.phone = phone;
+    if (email !== undefined) updates.email = email;
+    if (notes !== undefined) updates.notes = notes;
+
 
   const { data, error } = await supabase
     .from('customers')
