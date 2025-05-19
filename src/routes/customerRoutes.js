@@ -4,7 +4,7 @@ const verifyToken = require('../middleware/verifyToken');
 const supabase = require('../database/supabaseClient');
 const { lookupCustomer } = require('../controllers/customerController');
 const logAdminAction = require('../utils/logAdminAction');
-const { Parser} = require('json2csv');
+const { Parser } = require('json2csv');
 
 // Customer lookup (public/internal)
 router.post('/lookup', lookupCustomer);
@@ -74,23 +74,33 @@ router.get('/:id', verifyToken, async (req, res) => {
 router.post('/', verifyToken, async (req, res) => {
   const {
     name = '',
-    phone, 
+    phone,
     email = '',
     notes = '',
-    points = 0 
+    points = 0
   } = req.body;
 
   if (!phone) {
     return res.status(400).json({ error: 'Name, phone, and email are required.' });
   }
 
+  // FIXED: safe .or() handling
+  const orConditions = [];
+  if (email) orConditions.push(`email.eq.${email}`);
+  if (phone) orConditions.push(`phone.eq.${phone}`);
+
+  if (orConditions.length === 0) {
+    return res.status(400).json({ error: 'Must provide at least email or phone.' });
+  }
+
   const { data: existing, error: lookupError } = await supabase
     .from('customers')
     .select('*')
-    .or(`email.eq.${email},phone.eq.${phone}`)
+    .or(orConditions.join(','))
     .maybeSingle();
 
   if (lookupError) {
+    console.error('Customer lookup error:', lookupError);
     return res.status(500).json({ error: 'Failed to check for existing customer.' });
   }
 
@@ -136,11 +146,10 @@ router.put('/:id', verifyToken, async (req, res) => {
   }
 
   const updates = {};
-    if (name !== undefined) updates.name = name;
-    if (phone !== undefined) updates.phone = phone;
-    if (email !== undefined) updates.email = email;
-    if (notes !== undefined) updates.notes = notes;
-
+  if (name !== undefined) updates.name = name;
+  if (phone !== undefined) updates.phone = phone;
+  if (email !== undefined) updates.email = email;
+  if (notes !== undefined) updates.notes = notes;
 
   const { data, error } = await supabase
     .from('customers')
