@@ -64,13 +64,15 @@ npm install
 
 ### 3. Environment Variables
 Create a .env file in the root directory with the following:
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_KEY=your_service_role_key
+
+SUPABASE_URL=your_supabase_project_url, 
+SUPABASE_KEY=your_service_role_key, 
 JWT_SECRET=your_jwt_secret
 
 ### 4. Start the Server
 npm run dev (runs on http://localhost:4000)
 
+---
 
 Author
 Henry Harborne
