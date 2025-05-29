@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const supabase = require('../database/supabaseClient');
+const { loginLimiter } = require('../middleware/rateLimits');
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.get('/ping', (req, res) => {
 });
 
 // POST /api/admin/login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   const { data: admin, error } = await supabase

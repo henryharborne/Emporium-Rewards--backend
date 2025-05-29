@@ -5,9 +5,10 @@ const supabase = require('../database/supabaseClient');
 const { lookupCustomer } = require('../controllers/customerController');
 const logAdminAction = require('../utils/logAdminAction');
 const { Parser } = require('json2csv');
+const { lookupLimiter } = require('../middleware/rateLimits');
 
 // Customer lookup (public/internal)
-router.post('/lookup', lookupCustomer);
+router.post('/lookup', lookupLimiter, lookupCustomer);
 
 // GET /api/customers/search?q=...
 router.get('/search', verifyToken, async (req, res) => {
