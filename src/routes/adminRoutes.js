@@ -29,6 +29,7 @@ router.get('/ping', (req, res) => {
 
 // POST /api/admin/login
 router.post('/login', loginLimiter, async (req, res) => {
+  console.log(`Login attempt from IP: ${req.ip}, email: ${req.body.email}`);
   const { email, password } = req.body;
 
   const { data: admin, error } = await supabase
