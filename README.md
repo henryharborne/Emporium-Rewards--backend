@@ -43,9 +43,9 @@ server.js
 - JWT-based authentication  
 - Supabase Row-Level Security (RLS)  
 - Route-level access control  
+- Rate limiting per IP
 
 ### In Progress
--  Rate limiting per IP  
 -  IP logging for audit trails  
 -  Encrypted logs for tamper prevention  
 -  Role-based permissions (RBAC)  
