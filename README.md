@@ -74,7 +74,7 @@ npm run dev (runs on http://localhost:4000)
 
 ---
 
-Author
-Henry Harborne
-Senior CS Major @ University of Florida
-Focused on full-stack development, cybersecurity, and DevOps
+## Author
+ - Henry Harborne
+ - Senior CS Major @ University of Florida
+ - Focused on full-stack development, cybersecurity, and DevOps
